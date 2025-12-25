@@ -80,7 +80,8 @@ library
         text >=1.2 && <2.2,
         time ^>=1.12,
         containers ^>=0.6,
-        transformers ^>=0.5
+        transformers ^>=0.5,
+        parser-combinators >=0.4 && <2,
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -129,7 +130,8 @@ test-suite teamspeak-server-logparser-test
     default-language: GHC2021
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+      TeamSpeak.ParserSpec
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -146,7 +148,7 @@ test-suite teamspeak-server-logparser-test
     -- Test dependencies.
     build-depends:
         base ^>=4.18,
-        hspec ^>=2.7,
+        hspec ^>= 2.10,
         megaparsec ^>=9.0,
         text >=1.2 && <2.2,
         time ^>=1.12,
