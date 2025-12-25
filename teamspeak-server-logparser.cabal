@@ -80,7 +80,8 @@ library
         text >=1.2 && <2.2,
         time ^>=1.12,
         containers ^>=0.6,
-        transformers ^>=0.5
+        transformers ^>=0.5,
+        parser-combinators >=0.4 && <2,
 
     -- Directories containing source files.
     hs-source-dirs:   src

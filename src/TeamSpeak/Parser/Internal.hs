@@ -1,4 +1,5 @@
 -- File: src/TeamSpeak/Parser/Internal.hs
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Internal module containing the low-level Megaparsec parsers for
 --   TeamSpeak log events. Exposed to the main Parser module.
@@ -7,6 +8,7 @@ module TeamSpeak.Parser.Internal where
 import           Control.Monad.Combinators (skipManyTill)
 import           Data.Text (Text, pack)
 import qualified Data.Text as T
+import           Data.Char (isDigit)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
