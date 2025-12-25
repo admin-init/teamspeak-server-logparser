@@ -1,15 +1,33 @@
--- src/TeamSpeak/Types.hs
-module TeamSpeak.Types where
+-- File: src/TeamSpeak/Types.hs
+
+-- | Module containing the core data types for representing TeamSpeak log events
+--   and client information.
+module TeamSpeak.Types
+    ( Client(..)
+    , ConnectionEvent(..)
+    , ConnectionEventType(..)
+    ) where
 
 import Data.Time (UTCTime)
+import Data.Text (Text)
 
-data EventType
-  = ClientConnected { clientId :: Int, clientName :: String, channelId :: Int, channelName :: String }
-  | ClientDisconnected { clientId :: Int, clientName :: String }
-  | ChatMessage { senderId :: Int, senderName :: String, messageText :: String }
-  deriving (Show, Eq)
+-- | Represents a TeamSpeak client with its unique identifier and name.
+data Client = Client
+    { clientId   :: Int   -- ^ The unique numerical ID assigned to the client.
+    , clientName :: Text  -- ^ The display name of the client.
+    } deriving (Show, Eq) -- Added Eq for potential comparisons
 
-data LogEvent = LogEvent
-  { eventTime :: UTCTime
-  , eventType :: EventType
-  } deriving (Show, Eq)
+-- | Represents a client connection or disconnection event parsed from the log.
+data ConnectionEvent = ConnectionEvent
+    { eventTimestamp :: UTCTime               -- ^ The time the event occurred.
+    , eventClient    :: Client                -- ^ The client involved in the event.
+    , eventType      :: ConnectionEventType   -- ^ Whether the event was a connection or disconnection.
+    -- Potentially add reason :: Maybe Text later for disconnection reasons
+    } deriving (Show, Eq)
+
+-- | Distinguishes between a client connecting and disconnecting.
+data ConnectionEventType
+    = Connected    -- ^ Client connected to the server.
+    | Disconnected -- ^ Client disconnected from the server.
+    -- Potentially add other types later if needed (e.g., TimedOut)
+    deriving (Show, Eq)
