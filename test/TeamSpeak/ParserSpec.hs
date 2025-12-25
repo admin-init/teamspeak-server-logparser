@@ -35,39 +35,39 @@ spec :: Spec
 spec = do
   describe "clientConnectedParser" $ do
     it "parses a client connected log line correctly" $ do
-      let logLine = "2025-08-21 03:02:02.318469|INFO    |VirtualServerBase|1  |client connected 'CMDR_RainFall'(id:3) using a myTeamSpeak ID from 60.176.94.92:53623"
+      let logLine = "2025-08-21 03:02:02.318469|INFO    |VirtualServerBase|1  |client connected 'TEST_USER'(id:3) using a myTeamSpeak ID from 60.176.94.92:53623"
       let expectedEvent = ConnectionEvent
                               { eventTimestamp = expectedTimeConnected
-                              , eventClient = Client { clientId = 3, clientName = "CMDR_RainFall" }
+                              , eventClient = Client { clientId = 3, clientName = "TEST_USER" }
                               , eventType = Connected
                               }
       runParser clientConnectedParser (pack logLine) `shouldBe` expectedEvent
 
   describe "clientDisconnectedParser" $ do
     it "parses a client disconnected log line correctly" $ do
-      let logLine = "2025-08-21 02:57:55.329933|INFO    |VirtualServerBase|1  |client disconnected 'CMDR_RainFall'(id:3) reason 'reasonmsg=leaving'"
+      let logLine = "2025-08-21 02:57:55.329933|INFO    |VirtualServerBase|1  |client disconnected 'TEST_USER'(id:3) reason 'reasonmsg=leaving'"
       let expectedEvent = ConnectionEvent
                               { eventTimestamp = expectedTimeDisconnected
-                              , eventClient = Client { clientId = 3, clientName = "CMDR_RainFall" }
+                              , eventClient = Client { clientId = 3, clientName = "TEST_USER" }
                               , eventType = Disconnected
                               }
       runParser clientDisconnectedParser (pack logLine) `shouldBe` expectedEvent
 
   describe "connectionEventParser" $ do
     it "parses a client connected line using the combined parser" $ do
-      let logLine = "2025-08-21 03:02:02.318469|INFO    |VirtualServerBase|1  |client connected 'CMDR_RainFall'(id:3) using a myTeamSpeak ID from 60.176.94.92:53623"
+      let logLine = "2025-08-21 03:02:02.318469|INFO    |VirtualServerBase|1  |client connected 'TEST_USER'(id:3) using a myTeamSpeak ID from 60.176.94.92:53623"
       let expectedEvent = ConnectionEvent
                               { eventTimestamp = expectedTimeConnected
-                              , eventClient = Client { clientId = 3, clientName = "CMDR_RainFall" }
+                              , eventClient = Client { clientId = 3, clientName = "TEST_USER" }
                               , eventType = Connected
                               }
       runParser connectionEventParser (pack logLine) `shouldBe` expectedEvent
 
     it "parses a client disconnected line using the combined parser" $ do
-      let logLine = "2025-08-21 02:57:55.329933|INFO    |VirtualServerBase|1  |client disconnected 'CMDR_RainFall'(id:3) reason 'reasonmsg=leaving'"
+      let logLine = "2025-08-21 02:57:55.329933|INFO    |VirtualServerBase|1  |client disconnected 'TEST_USER'(id:3) reason 'reasonmsg=leaving'"
       let expectedEvent = ConnectionEvent
                               { eventTimestamp = expectedTimeDisconnected
-                              , eventClient = Client { clientId = 3, clientName = "CMDR_RainFall" }
+                              , eventClient = Client { clientId = 3, clientName = "TEST_USER" }
                               , eventType = Disconnected
                               }
       runParser connectionEventParser (pack logLine) `shouldBe` expectedEvent
