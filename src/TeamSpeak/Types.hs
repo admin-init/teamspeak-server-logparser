@@ -11,6 +11,7 @@ module TeamSpeak.Types
 
 import Data.Time (UTCTime)
 import Data.Text (Text)
+import Data.Int (Int64)
 
 -- | Represents a TeamSpeak client with its unique identifier and name.
 data Client = Client
@@ -35,7 +36,7 @@ data ConnectionEventType
 
 -- Using UTCTime for consistency with ConnectionEvent, assuming conversion for DB storage/retrieval
 data UserSession = UserSession
-    { sessionId :: Int
+    { sessionId :: Int64
     , sessionClientId :: Int
     , sessionClientName :: Text
     , sessionConnectTime :: UTCTime -- Store as UTCTime, convert to/from ISO 8601 string for DB
