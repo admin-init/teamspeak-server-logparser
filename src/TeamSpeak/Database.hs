@@ -72,17 +72,10 @@ insertSessionQuery =
 --   The actual auto-generated ID from the database is not returned here,
 --   but the database will assign one.
 insertSession :: Connection -> UserSession -> IO ()
-insertSession conn session = do
-  -- Convert UTCTime to Text for storage
-  let connectTimeText = T.pack $ show $ sessionConnectTime session
-      disconnectTimeText = maybe "" (T.pack . show) $ sessionDisconnectTime session -- Handle Nothing case
+insertSession conn session =
   execute conn
     "INSERT INTO user_sessions (client_id, client_name, connect_time, disconnect_time) VALUES (?, ?, ?, ?)"
-    ( sessionClientId session
-    , sessionClientName session
-    , connectTimeText
-    , disconnectTimeText -- This will be an empty string if Nothing
-    )
+    session  -- pass the whole UserSession; relies on ToRow instance
 
 -- | Updates the 'disconnect_time' of a 'UserSession' in the 'user_sessions' table by its ID.
 --   The 'disconnect_time' is converted from UTCTime to Text for storage.
@@ -125,5 +118,7 @@ instance ToRow UserSession where
     [ SQLInteger (fromIntegral $ sessionClientId s)
     , SQLText (sessionClientName s)
     , SQLText (T.pack $ show $ sessionConnectTime s)
-    , SQLText (maybe "" (T.pack . show) $ sessionDisconnectTime s)
+    , case sessionDisconnectTime s of
+        Nothing -> SQLNull
+        Just t  -> SQLText (T.pack $ show t)
     ]
