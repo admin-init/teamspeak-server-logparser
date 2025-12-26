@@ -70,6 +70,7 @@ library
     other-modules:
         TeamSpeak.Parser.Internal
         TeamSpeak.Offsets
+        TeamSpeak.Watch
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
