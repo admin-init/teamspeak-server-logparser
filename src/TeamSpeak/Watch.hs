@@ -1,3 +1,4 @@
+-- File: src/TeamSpeak/Watch.hs
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Module for watching a directory for log file changes using fsnotify.
