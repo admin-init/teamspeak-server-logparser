@@ -1,3 +1,12 @@
+# Database files
+*.db
+db/
+
+# Log data / input logs (not source code)
+data/
+logs/
+*.log
+
 dist
 dist-*
 cabal-dev
