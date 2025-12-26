@@ -6,6 +6,7 @@ module TeamSpeak.Types
     ( Client(..)
     , ConnectionEvent(..)
     , ConnectionEventType(..)
+    , UserSession(..)
     ) where
 
 import Data.Time (UTCTime)
@@ -31,3 +32,12 @@ data ConnectionEventType
     | Disconnected -- ^ Client disconnected from the server.
     -- Potentially add other types later if needed (e.g., TimedOut)
     deriving (Show, Eq)
+
+-- Using UTCTime for consistency with ConnectionEvent, assuming conversion for DB storage/retrieval
+data UserSession = UserSession
+    { sessionId :: Int
+    , sessionClientId :: Int
+    , sessionClientName :: Text
+    , sessionConnectTime :: UTCTime -- Store as UTCTime, convert to/from ISO 8601 string for DB
+    , sessionDisconnectTime :: Maybe UTCTime -- Store as Maybe UTCTime, convert to/from ISO 8601 string for DB (NULL if Nothing)
+    } deriving (Show, Eq)
