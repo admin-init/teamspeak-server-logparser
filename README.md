@@ -69,18 +69,16 @@ teamspeak-server-logparser-cli watch \
 ## Example Workflow
 
 - Initial import (optional):
-
 ```sh
 teamspeak-server-logparser-cli batch -l logs/ts3server_*.log -d sessions.db
-Start real-time monitoring:
 ```
 
+- Start real-time monitoring:
 ```sh
-
 teamspeak-server-logparser-cli watch -L logs -d sessions.db
-Query sessions (using sqlite3):
 ```
 
+ - Query sessions (using sqlite3):
 ```sql
 SELECT * FROM user_sessions
 WHERE session_disconnect_time IS NULL;  -- currently online
