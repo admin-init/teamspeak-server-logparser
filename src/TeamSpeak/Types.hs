@@ -7,11 +7,16 @@ module TeamSpeak.Types
     , ConnectionEvent(..)
     , ConnectionEventType(..)
     , UserSession(..)
+    , LogOffsets
+    , emptyLogOffsets
     ) where
 
 import Data.Time (UTCTime)
 import Data.Text (Text)
 import Data.Int (Int64)
+import Data.Aeson (ToJSON(toJSON), FromJSON(parseJSON))
+import qualified Data.Map.Strict as Map
+import Data.Map.Strict (Map)
 
 -- | Represents a TeamSpeak client with its unique identifier and name.
 data Client = Client
@@ -42,3 +47,17 @@ data UserSession = UserSession
     , sessionConnectTime :: UTCTime -- Store as UTCTime, convert to/from ISO 8601 string for DB
     , sessionDisconnectTime :: Maybe UTCTime -- Store as Maybe UTCTime, convert to/from ISO 8601 string for DB (NULL if Nothing)
     } deriving (Show, Eq)
+
+-- | Map from log file path (relative or absolute) to the last processed byte offset.
+type LogOffsets = Map FilePath Integer
+
+-- | Empty offsets map.
+emptyLogOffsets :: LogOffsets
+emptyLogOffsets = Map.empty
+
+-- Make LogOffsets an instance of ToJSON and FromJSON for persistence.
+-- instance ToJSON LogOffsets where
+--     toJSON = toJSON . Map.toList
+
+-- instance FromJSON LogOffsets where
+--     parseJSON = fmap Map.fromList . parseJSON

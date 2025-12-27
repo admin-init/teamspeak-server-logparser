@@ -4,43 +4,102 @@
 module Main where
 
 import Options.Applicative -- Import optparse-applicative
-import qualified Data.Text as T -- Import Text for handling the raw log line
-import qualified Data.Text.IO as TIO -- Import for readFile
 import Control.Monad (forM_) -- Import forM_ for looping over lines
 import Data.Time (getCurrentTime, UTCTime) -- Import UTCTime and getCurrentTime for session times
 import qualified Data.Map.Strict as Map -- Import Map for tracking online sessions
+import qualified Data.Text as T -- Import Text for handling the raw log line
+import qualified Data.Text.IO as TIO -- Import for readFile
+import qualified Data.Text.Encoding as TE
+import qualified Data.ByteString as BS
 import Data.Map.Strict (Map) -- Import Map type alias
 import Data.Int (Int64)
+import Data.Maybe (mapMaybe)
+import System.Directory (listDirectory, doesDirectoryExist)
 
 -- Import types and functions from your library
 import TeamSpeak.Types (ConnectionEvent(..), ConnectionEventType(..), Client(..), UserSession(..))
 import TeamSpeak.Parser (connectionEventParser) -- Import the main parser
-import TeamSpeak.Database (Connection, openConnection, closeConnection, ensureSchema, insertSession, updateSessionDisconnectTime, execute, lastInsertRowId) -- Import DB functions
+import TeamSpeak.Database 
+  ( Connection
+  , openConnection
+  , closeConnection
+  , ensureSchema
+  , insertSession
+  , updateSessionDisconnectTime
+  , execute
+  , lastInsertRowId
+  ) -- Import DB functions
+import TeamSpeak.RealtimeProcessor (startRealtimeProcessingWithSessionTracking)
 import Text.Megaparsec (parse, errorBundlePretty) -- Import for running the parser and error handling
 import Text.Megaparsec.Char (newline) -- Import newline if needed for parsing, though not directly here
 import Data.Void (Void) -- Import Void for the parser's error type
 
 -- | Data structure to hold parsed command-line options.
-data Options = Options
+data Options = BatchOptions
   { optLogFile :: FilePath
   , optDbPath  :: FilePath
-  } deriving (Show, Eq)
+  }
+ | WatchOptions
+  { optLogDir      :: FilePath
+  , optDbPath      :: FilePath
+  , optOffsetsFile :: FilePath
+  , optStateFile   :: FilePath -- NEW: for online session state
+  }
 
 -- | Parser for command-line options.
 optionsParser :: Parser Options
-optionsParser = Options
-  <$> strOption -- Parse a string option
-      ( long "log-file" -- Long option name: --log-file
-     <> short 'l'       -- Short option name: -l
-     <> metavar "FILEPATH" -- Meta variable name for help text
-     <> help "Path to the TeamSpeak server log file" -- Help text
+optionsParser =
+  subparser
+    ( command "batch"
+      ( info batchParser
+        ( progDesc "Run one-time batch import from a single log file" )
       )
-  <*> strOption -- Parse another string option
-      ( long "db-path" -- Long option name: --db-path
-     <> short 'd'      -- Short option name: -d
-     <> metavar "DBPATH" -- Meta variable name for help text
-     <> help "Path to the SQLite database file" -- Help text
+   <> command "watch"
+      ( info watchParser
+        ( progDesc "Watch a directory for log changes in real-time" )
       )
+    )
+
+batchParser :: Parser Options
+batchParser = BatchOptions
+  <$> strOption (long "log-file" 
+              <> short 'l' 
+              <> metavar "FILE" 
+              <> help "Input log file"
+              )
+  <*> strOption (long "db-path"  
+              <> short 'd' 
+              <> metavar "DB"  
+              <> help "SQLite database path" 
+              <> value "./sessions.db"
+              )
+
+watchParser :: Parser Options
+watchParser = WatchOptions
+    <$> strOption (long "log-dir"     -- Long option name: --log-file
+                <> short 'L'          -- Short option name: -l
+                <> metavar "DIR"      -- Meta variable name for help text
+                <> help "Log directory to watch"  -- Help text
+                <> value "./logs"
+                )
+    <*> strOption (long "db-path"     -- Long option name: --db-path
+                <> short 'd'          -- Short option name: -d
+                <> metavar "DB"       -- Meta variable name for help text
+                <> help "SQLite database path"    -- Help text
+                <> value "./sessions.db"
+                )
+    <*> strOption (long "offsets"     
+                <> short 'o' 
+                <> metavar "FILE" 
+                <> help "Offset tracking file" 
+                <> value "./offsets.json"
+                )
+    <*> strOption (long "session-state" 
+                <> short 's' 
+                <> metavar "FILE" 
+                <> help "Online session state file" 
+                <> value "./online-sessions.json"
+                )
 
 -- | Type alias for tracking connected sessions: Map ClientId SessionId
 type ConnectedSessions = Map Int Int64
@@ -55,35 +114,25 @@ main = do
                      <> header "teamspeak-server-logparser-cli - A log parser for TeamSpeak servers" -- Header for help text
                       )
                      )
-  -- Print the parsed options for now (as a placeholder)
-  putStrLn $ "Log file: " ++ optLogFile opts
-  putStrLn $ "Database path: " ++ optDbPath opts
-  putStrLn "Placeholder: Actual processing would happen here."
+  case opts of
+    BatchOptions logFile dbPath -> runBatch logFile dbPath
+    WatchOptions logDir dbPath offsetsFile stateFile -> runWatch logDir dbPath offsetsFile stateFile
 
-  -- Open database connection
-  conn <- openConnection (optDbPath opts)
-  -- Ensure the schema exists
-  ensureSchema conn
+runBatch :: FilePath -> FilePath -> IO ()
+runBatch logFile dbPath = do
+    putStrLn $ "Batch mode: " ++ logFile
+    conn <- openConnection dbPath
+    ensureSchema conn
+    logContent <- TIO.readFile logFile
+    let logLines = T.lines logContent
+    processLogLines conn Map.empty logLines
+    closeConnection conn
+    putStrLn "Batch processing completed."
 
-  -- Initialize the map to track connected sessions
-  let initialConnectedSessions = Map.empty :: ConnectedSessions
-
-  -- Read the log file content as Text
-  logContent <- TIO.readFile (optLogFile opts)
-  -- Split the content into lines
-  let logLines = T.lines logContent
-
-  -- Process lines iteratively, passing the state of connected sessions
-  -- We need a stateful way to process lines and update the map.
-  -- A simple fold might not be sufficient if we need to carry state through IO actions easily.
-  -- Using a recursive helper function or a state monad would be cleaner for complex state.
-  -- For now, let's use a simple recursive approach or a loop with mutable state.
-  -- We'll use a helper function that takes the connection, the map of connected sessions, and the list of lines.
-  processLogLines conn initialConnectedSessions logLines
-
-  -- Close the database connection after processing
-  closeConnection conn
-  putStrLn "Log parsing and database storage completed."
+runWatch :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
+runWatch logDir dbPath offsetsFile stateFile = do
+    putStrLn $ "Watch mode: monitoring " ++ logDir
+    startRealtimeProcessingWithSessionTracking offsetsFile stateFile logDir dbPath
 
 -- | Helper function to process log lines recursively, maintaining the state of connected sessions.
 processLogLines :: Connection -> ConnectedSessions -> [T.Text] -> IO ()
