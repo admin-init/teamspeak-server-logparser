@@ -81,7 +81,7 @@ insertSession conn session =
 --   The 'disconnect_time' is converted from UTCTime to Text for storage.
 updateSessionDisconnectTime :: Connection -> Int64 -> UTCTime -> IO ()
 updateSessionDisconnectTime conn sessionId disconnectTime = do
-  let disconnectTimeText = T.pack $ show disconnectTime
+  let disconnectTimeText = T.pack $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S%Q" disconnectTime
   execute conn
     "UPDATE user_sessions SET disconnect_time = ? WHERE id = ?"
     (disconnectTimeText, sessionId)
@@ -117,8 +117,8 @@ instance ToRow UserSession where
   toRow s =
     [ SQLInteger (fromIntegral $ sessionClientId s)
     , SQLText (sessionClientName s)
-    , SQLText (T.pack $ show $ sessionConnectTime s)
+    , SQLText (T.pack $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S%Q" (sessionConnectTime s))
     , case sessionDisconnectTime s of
         Nothing -> SQLNull
-        Just t  -> SQLText (T.pack $ show t)
+        Just t  -> SQLText (T.pack $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S%Q" t)
     ]
