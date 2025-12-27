@@ -24,10 +24,11 @@ watchLogDirectory logDir onFileModified = do
         putStrLn "File watcher active. Press Ctrl+C to stop."
         forever (threadDelay maxBound) -- keep alive
   where
-    -- Predicate: which events to handle?
+    -- Handle both new files and modifications
     shouldHandle (Modified _ _ _) = True
+    shouldHandle (Added    _ _ _) = True
     shouldHandle _                = False
 
-    -- Handler: what to do when event matches
     handleEvent (Modified path _ _) = onFileModified path
-    handleEvent _                   = return () -- should not happen due to predicate
+    handleEvent (Added    path _ _) = onFileModified path
+    handleEvent _                   = return ()
