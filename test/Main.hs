@@ -6,6 +6,7 @@ import Test.Hspec
 -- Import your spec module here
 import qualified TeamSpeak.ParserSpec -- Use qualified import to avoid naming conflicts
 import qualified TeamSpeak.DatabaseSpec -- Import the new Database spec
+import qualified IntegrationSpec
 
 main :: IO ()
 main = hspec $ do
@@ -15,3 +16,4 @@ main = hspec $ do
   -- otherSpec.spec
   -- Run the tests defined in TeamSpeak.DatabaseSpec
   TeamSpeak.DatabaseSpec.spec
+  IntegrationSpec.spec
