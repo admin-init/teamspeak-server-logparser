@@ -118,14 +118,17 @@ startRealtimeProcessingWithSessionTracking offsetsFile stateFile logDir dbPath =
 
     -- Define the file modification handler
     let onFileModified fullPath = do
+            putStrLn $ ">>> Detected change in: " ++ fullPath  -- DEBUG
             (newOffsets, newSessions) <- withMVar offsetsVar $ \curOffsets ->
                 withMVar sessionsVar $ \curSessions -> do
                     let offset = Map.findWithDefault 0 fullPath curOffsets
                     (content, fileSize) <- readFileFromOffset fullPath offset
+                    putStrLn $ ">>> Read " ++ show (BS.length content) ++ " bytes from offset " ++ show offset
                     if BS.null content
                         then return (curOffsets, curSessions)
                         else do
                             let text = TE.decodeUtf8With lenientDecode content
+                            putStrLn $ ">>> Content: " ++ take 100 (unpack text) ++ "..."
                             let events = mapMaybe (parseMaybe connectionEventParser) (T.lines text)
                             (updatedSessions, _) <- foldM (processEvent conn) (curSessions, fullPath) events
                             return (Map.insert fullPath fileSize curOffsets, updatedSessions)
@@ -147,8 +150,10 @@ processEvent conn (sessions, filePath) event = do
         Connected -> do
             let client = eventClient event
             let session = UserSession (-1) (clientId client) (clientName client) (eventTimestamp event) Nothing
+            putStrLn $ ">>> About to insert session for " ++ show (clientName client)
             insertSession conn session
             sid <- lastInsertRowId conn
+            putStrLn $ ">>> Inserted with rowid: " ++ show sid
             let newSessions = Map.insert (clientId client) (sid, eventTimestamp event) sessions
             return (newSessions, filePath)
         Disconnected -> do
@@ -158,6 +163,7 @@ processEvent conn (sessions, filePath) event = do
                     putStrLn $ "Warning: Disconnect for unknown client " ++ show cid ++ " in " ++ filePath
                     return (sessions, filePath)
                 Just (sid, _) -> do
+                    putStrLn $ ">>> Updating disconnect time for session " ++ show sid
                     updateSessionDisconnectTime conn sid (eventTimestamp event)
                     let newSessions = Map.delete cid sessions
                     return (newSessions, filePath)
@@ -166,14 +172,14 @@ processEvent conn (sessions, filePath) event = do
 -- | Periodically write offsets to disk (every 5 seconds)
 persistOffsetsLoop :: FilePath -> MVar LogOffsets -> IO ()
 persistOffsetsLoop f v = do
-    threadDelay (5 * 1000000)   -- 5 seconds
+    threadDelay (750000)   -- 0.75 * 1000000 = 0.75 seconds
     offsets <- readMVar v
     handle (\(e :: SomeException) -> print e) $ writeLogOffsets f offsets
     persistOffsetsLoop f v
 
 persistSessionsLoop :: FilePath -> MVar OnlineSessions -> IO ()
 persistSessionsLoop f v = do
-    threadDelay (5 * 1000000)
+    threadDelay (750000)
     sessions <- readMVar v
     handle (\(e :: SomeException) -> print e) $ saveOnlineSessions f sessions
     persistSessionsLoop f v

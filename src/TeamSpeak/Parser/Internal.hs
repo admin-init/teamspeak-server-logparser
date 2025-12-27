@@ -86,26 +86,15 @@ clientInfoParser = do
 --   Expects format: timestamp|INFO|...|client connected 'Name'(id:XXX) ...
 clientConnectedParser :: Parser ConnectionEvent
 clientConnectedParser = do
-    timestamp <- timestampParser
-    -- We can skip the INFO part and other separators until we reach the keyword.
-    -- This is a bit flexible but works for the given format.
-    skipManyTill anySingle (try clientConnectedKeywordParser) -- Use 'try' to backtrack if 'client connected' doesn't match
+    timestamp <- timestampParser  -- consumes up to and including the first '|'
+    -- Now we expect: "INFO    |VirtualServerBase|<digits>  |client connected ..."
+    _ <- string "INFO    |VirtualServerBase|"
+    _ <- takeWhile1P (Just "server id") (/= ' ')  -- e.g. "1"
+    _ <- string "  |"  -- two spaces and a pipe
+    _ <- string "client connected "
     client <- clientInfoParser
-    -- We can optionally parse the rest of the line (e.g., "using a myTeamSpeak ID...") if needed later,
-    -- but for now, we just consume up to the end of the relevant part.
-    -- Using 'takeRest' here might be too broad, let's just ensure we are at the end of the client info part.
-    -- A more robust way might be to look for the end of the line or specific trailing patterns,
-    -- but for initial parsing, stopping after the client info is sufficient if the format is consistent.
-    -- For now, we assume the client info is immediately followed by the rest which we don't care about yet.
-    -- So, just consume the client part and return.
-    -- Let's consume the rest of the line for now, assuming the client info is the crucial part.
-    -- takeRest -- This consumes everything after client info, which is fine for now.
-    -- Actually, let's just ensure we parsed the client info correctly and stop there for the core event.
-    -- Consume remaining characters on the line, effectively ignoring the rest (like IP:port)
-    -- until we hit a newline or end of input. This makes the parser less brittle to format variations.
-    -- However, 'anySingle' might not be ideal for the end. Let's use 'takeWhileP' for the rest.
-    -- Let's just stop parsing after the client info. The rest is context but not part of the core event data.
-    -- So, we just return the event with the timestamp, client, and type.
+    -- Optionally consume rest of line (to avoid parse failure if extra text)
+    _ <- takeWhileP (Just "trailing") (/= '\n')
     return $ ConnectionEvent timestamp client Connected
 
 -- | Main parser for a 'client disconnected' log line.
@@ -114,11 +103,12 @@ clientConnectedParser = do
 clientDisconnectedParser :: Parser ConnectionEvent
 clientDisconnectedParser = do
     timestamp <- timestampParser
-    skipManyTill anySingle (try clientDisconnectedKeywordParser) -- Use 'try' to backtrack
+    _ <- string "INFO    |VirtualServerBase|"
+    _ <- takeWhile1P (Just "server id") (/= ' ')
+    _ <- string "  |"
+    _ <- string "client disconnected "
     client <- clientInfoParser
-    -- Optionally parse the reason part if needed later, e.g., 'reason 'reasonmsg=...'
-    -- For now, just consume the rest of the line after client info.
-    -- Similar to connected, we stop after parsing the client info.
+    _ <- takeWhileP (Just "trailing") (/= '\n')
     return $ ConnectionEvent timestamp client Disconnected
 
 -- | Attempts to parse either a connected or disconnected event on a single line.
